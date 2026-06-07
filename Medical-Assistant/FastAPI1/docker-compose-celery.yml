@@ -1,0 +1,174 @@
+version: '3.8'
+
+services:
+  # Redis - Celery Broker & Backend
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - medical-network
+
+  # FastAPI Application
+  fastapi:
+    build: .
+    container_name: fastapi-medical
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - mysql
+      - minio
+    environment:
+      - REDIS_HOST=redis
+      - DB_HOST=mysql
+      - MINIO_ENDPOINT=minio:9000
+    command: >
+      bash -c "
+        uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+      "
+    networks:
+      - medical-network
+    volumes:
+      - ./cache:/app/cache
+
+  # Celery Worker - AI Queue
+  celery-ai:
+    build: .
+    container_name: celery-ai-worker
+    restart: always
+    depends_on:
+      - redis
+      - mysql
+      - minio
+    environment:
+      - REDIS_HOST=redis
+      - DB_HOST=mysql
+      - MINIO_ENDPOINT=minio:9000
+    command: >
+      bash -c "
+        celery -A celery_worker:celery_app worker 
+        --loglevel=info 
+        --queues=ai_queue 
+        --concurrency=2 
+        --hostname=ai_worker@%h
+      "
+    networks:
+      - medical-network
+    volumes:
+      - ./cache:/app/cache
+
+  # Celery Worker - File Queue
+  celery-file:
+    build: .
+    container_name: celery-file-worker
+    restart: always
+    depends_on:
+      - redis
+      - mysql
+      - minio
+    environment:
+      - REDIS_HOST=redis
+      - DB_HOST=mysql
+      - MINIO_ENDPOINT=minio:9000
+    command: >
+      bash -c "
+        celery -A celery_worker:celery_app worker 
+        --loglevel=info 
+        --queues=file_queue 
+        --concurrency=2 
+        --hostname=file_worker@%h
+      "
+    networks:
+      - medical-network
+    volumes:
+      - ./cache:/app/cache
+
+  # Celery Worker - Data Queue
+  celery-data:
+    build: .
+    container_name: celery-data-worker
+    restart: always
+    depends_on:
+      - redis
+      - mysql
+      - minio
+    environment:
+      - REDIS_HOST=redis
+      - DB_HOST=mysql
+      - MINIO_ENDPOINT=minio:9000
+    command: >
+      bash -c "
+        celery -A celery_worker:celery_app worker 
+        --loglevel=info 
+        --queues=data_queue 
+        --concurrency=1 
+        --hostname=data_worker@%h
+      "
+    networks:
+      - medical-network
+
+  # Flower - Celery Monitor
+  flower:
+    build: .
+    container_name: celery-flower
+    restart: always
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+    command: >
+      bash -c "
+        celery -A celery_worker:celery_app flower 
+        --port=5555 
+        --basic_auth=admin:admin123
+      "
+    networks:
+      - medical-network
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-medical
+    restart: always
+    ports:
+      - "3310:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: medical_assistant
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - medical-network
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: minio-medical
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - medical-network
+
+volumes:
+  redis_data:
+  mysql_data:
+  minio_data:
+
+networks:
+  medical-network:
+    driver: bridge

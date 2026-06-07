@@ -1,0 +1,20 @@
+{
+  "files": [],
+  "compilerOptions": {
+    // 其他配置...
+    "target": "es5", // 可以保持 es5（编译输出为 ES5），但 lib 需要指定更高版本
+    "lib": ["dom", "es2015"] // 关键：加入 es2015 或更高版本，支持 Promise
+  },
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.vitest.json"
+    }
+
+  ]
+}

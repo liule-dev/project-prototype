@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试前端API连接</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>测试前端API连接</h1>
+    <button onclick="testAPI()">测试API连接</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                // 测试学生API
+                const studentResponse = await axios.get('http://127.0.0.1:8000/api/students/');
+                resultDiv.innerHTML += '<h2>学生数据:</h2><pre>' + JSON.stringify(studentResponse.data, null, 2) + '</pre>';
+                
+                // 测试班级API
+                const classResponse = await axios.get('http://127.0.0.1:8000/api/classes/');
+                resultDiv.innerHTML += '<h2>班级数据:</h2><pre>' + JSON.stringify(classResponse.data, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.innerHTML += '<h2>错误:</h2><pre>' + JSON.stringify(error, null, 2) + '</pre>';
+            }
+        }
+    </script>
+</body>
+</html>

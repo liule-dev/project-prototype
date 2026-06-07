@@ -1,0 +1,67 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    display: block;
+  }
+
+  #app {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+  }
+}
+
+/* 添加 Element Plus 弹窗样式 */
+.el-message-box {
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* 为弹窗添加背景色 */
+.el-message-box {
+  background-color: #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.el-message-box__header {
+  background-color: #fafafa !important;
+  border-radius: 8px 8px 0 0 !important;
+  padding: 15px 20px 10px !important;
+}
+
+.el-message-box__content {
+  background-color: #ffffff !important;
+  padding: 20px !important;
+}
+
+.el-message-box__btns {
+  background-color: #ffffff !important;
+  border-radius: 0 0 8px 8px !important;
+  padding: 15px 20px 20px !important;
+}
