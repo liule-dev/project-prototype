@@ -1,10 +1,16 @@
-# 工具脚本文件夹
+# 测试与工具脚本文件夹
 
 本文件夹包含所有测试、清理和维护脚本。
 
 ## 📁 文件分类
 
-### 清理工具（生产环境使用）
+### 🔧 性能优化工具
+
+| 文件名 | 说明 | 使用方式 |
+|--------|------|----------|
+| `test_optimization.py` | **三级缓存性能验证**（L1内存+L2 Redis+L3 MySQL） | `python test_optimization.py` |
+
+### 🧹 清理工具（生产环境使用）
 
 | 文件名 | 说明 | 使用方式 |
 |--------|------|----------|
@@ -16,8 +22,33 @@
 | `clear_redis.py` | Redis 缓存清理工具 | `python clear_redis.py` |
 | `README_CLEANUP.md` | 清理工具详细说明 | 查看文档 |
 
-### 测试脚本（开发调试使用）
+### 🧪 测试脚本（开发调试使用）
 
+#### **缓存与性能测试**
+| 文件名 | 说明 |
+|--------|------|
+| `test_cache_protection.py` | 缓存击穿/雪崩防护测试 |
+| `test_optimization.py` | 三级缓存架构性能验证 |
+
+#### **Celery 异步任务测试**
+| 文件名 | 说明 |
+|--------|------|
+| `test_celery_task.py` | Celery 基础任务测试 |
+| `test_celery_llmlingua.py` | Celery Worker 中 LLMLingua 初始化测试 |
+
+#### **LLMLingua 压缩测试**
+| 文件名 | 说明 |
+|--------|------|
+| `test_llmlingua_init.py` | LLMLingua 模型初始化诊断 |
+| `test_llmlingua_model.py` | LLMLingua 压缩功能测试 |
+
+#### **认证与安全测试**
+| 文件名 | 说明 |
+|--------|------|
+| `test_auth.py` | JWT 认证接口测试 |
+| `init_test_user.py` | 初始化测试用户 |
+
+#### **向量检索测试**
 | 文件名 | 说明 |
 |--------|------|
 | `test_qdrant_data.py` | 检查 Qdrant 数据库中的数据 |
@@ -26,6 +57,19 @@
 | `test_filter.py` | 测试过滤器语法 |
 | `test_full_search.py` | 完整检索流程测试 |
 | `test_real_search.py` | 实际场景检索测试 |
+| `bm25.py` | BM25 索引初始化工具 |
+| `test_bm25.py` | BM25 混合检索测试 |
+
+#### **WebSocket 压力测试**
+| 文件名 | 说明 |
+|--------|------|
+| `test_websocket_stress.py` | WebSocket 并发压力测试 |
+
+#### **数据库检查工具**
+| 文件名 | 说明 |
+|--------|------|
+| `check_db_messages.py` | 检查数据库会话消息 |
+| `check_redis_queues.py` | 检查 Redis 队列状态 |
 
 ---
 

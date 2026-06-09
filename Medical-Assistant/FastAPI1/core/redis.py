@@ -28,7 +28,9 @@ class RedisClient:
                 'socket_connect_timeout': 5,
                 'socket_keepalive': True,
                 'retry_on_timeout': True,
-                'max_connections': 50
+                'max_connections': 200,
+                'health_check_interval': 30,
+                'socket_timeout': 5
             }
             cls._pool = ConnectionPool(**config)
             cls._instance = super().__new__(cls)

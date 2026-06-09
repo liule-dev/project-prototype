@@ -49,7 +49,6 @@ logs/
 # Cache and temporary files - Medical Assistant models
 Medical-Assistant/FastAPI1/cache/
 .hf_cache/
-models/
 *.bin
 *.safetensors
 *.onnx

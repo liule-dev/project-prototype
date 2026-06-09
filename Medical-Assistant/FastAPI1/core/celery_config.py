@@ -78,10 +78,10 @@ celery_app.conf.update(
     },
     
     # --- 并发配置 ---
-    # 设置每个 Worker 进程的并发数为 4
-    worker_concurrency=4,
-    # 设置预取倍数為 1，即每次只预取一个任务，保证公平调度
-    worker_prefetch_multiplier=1,
+    # 设置每个 Worker 进程的并发数为 8（提升吞吐量）
+    worker_concurrency=8,
+    # 设置预取倍数为 2，平衡任务调度效率和公平性
+    worker_prefetch_multiplier=2,
     
     # --- 任务超时配置 ---
     # 设置软超时时间为 300 秒（5 分钟），超过此时间会抛出 SoftTimeLimitExceeded 异常
@@ -102,10 +102,10 @@ celery_app.conf.update(
     # --- 速率限制配置 ---
     # 对特定任务设置执行频率限制，防止系统过载
     task_annotations={
-        # 限制 LLM 响应生成任务每分钟最多执行 10 次
-        'tasks.ai_tasks.generate_llm_response': {'rate_limit': '10/m'},
-        # 限制图像特征提取任务每分钟最多执行 20 次
-        'tasks.ai_tasks.extract_image_features': {'rate_limit': '20/m'},
+        # 限制 LLM 响应生成任务每分钟最多执行 30 次（提升 3 倍）
+        'tasks.ai_tasks.generate_llm_response': {'rate_limit': '30/m'},
+        # 限制图像特征提取任务每分钟最多执行 50 次（提升 2.5 倍）
+        'tasks.ai_tasks.extract_image_features': {'rate_limit': '50/m'},
     }
 )
 

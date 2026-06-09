@@ -97,7 +97,7 @@ services:
         celery -A celery_worker:celery_app worker 
         --loglevel=info 
         --queues=ai_queue 
-        --concurrency=2 
+        --concurrency=4 
         --hostname=ai_worker@%h
       "
     networks:
@@ -139,7 +139,7 @@ services:
         celery -A celery_worker:celery_app worker 
         --loglevel=info 
         --queues=file_queue 
-        --concurrency=2 
+        --concurrency=4 
         --hostname=file_worker@%h
       "
     networks:
@@ -174,11 +174,20 @@ services:
         celery -A celery_worker:celery_app worker 
         --loglevel=info 
         --queues=data_queue 
-        --concurrency=1 
+        --concurrency=2 
         --hostname=data_worker@%h
       "
     networks:
       - medical-network
+    volumes:
+      - ./FastAPI1/cache:/app/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   # Flower - Celery Monitor
   flower:

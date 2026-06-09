@@ -54,7 +54,12 @@ class CLIPFeatureExtractor:
         
         # 设置设备和模型
         self.model.eval()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if settings.USE_GPU and torch.cuda.is_available():
+            self.device = torch.device(settings.CUDA_DEVICE)
+            logger.info(f"✅ CLIP 模型使用 GPU: {self.device}")
+        else:
+            self.device = torch.device("cpu")
+            logger.info("ℹ️ CLIP 模型使用 CPU")
         self.model.to(self.device)
         
         # 自动检测特征维度

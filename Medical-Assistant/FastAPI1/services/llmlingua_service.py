@@ -50,10 +50,15 @@ class LLMLinguaCompressor:
             
             # 注意：PromptCompressor 不支持 local_files_only 参数
             # 离线模式通过环境变量 HF_HUB_OFFLINE=1 控制
+            
+            # 根据配置选择设备
+            llm_device = "cuda" if settings.USE_GPU else "cpu"
+            logger.info(f"🚀 LLMLingua 模型加载设备: {llm_device}")
+            
             self.compressor = PromptCompressor(
                 model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
                 use_llmlingua2=True,  # 启用 LLMLingua-2，速度更快
-                device_map="cpu"  # 强制使用 CPU
+                device_map=llm_device
             )
             logger.info("✅ LLMLingua 压缩器初始化完成")
         except Exception as e:

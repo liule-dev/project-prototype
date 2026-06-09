@@ -22,10 +22,17 @@ from FlagEmbedding import FlagReranker
 logger = logging.getLogger(__name__)
 
 # 初始化 Embedding 模型（优先使用本地缓存）
+import torch
+from core import settings
+
+device = "cuda" if settings.USE_GPU and torch.cuda.is_available() else "cpu"
+logger.info(f"🚀 Embedding 模型加载设备: {device}")
+
 embed_model = SentenceTransformer(
     settings.EMBEDDING_MODEL_NAME,
     cache_folder=settings.EMBEDDING_CACHE_FOLDER,
-    local_files_only=False  # 优先尝试下载，失败则使用缓存
+    local_files_only=False,  # 优先尝试下载，失败则使用缓存
+    device=device
 )
 
 # 重排序模型延迟加载（避免启动时内存不足）
@@ -40,10 +47,14 @@ def get_reranker():
     if _reranker_instance is None:
         logger.info("🔄 正在初始化重排序模型 BAAI/bge-reranker-v2-m3...")
         try:
+            # 根据配置选择设备
+            reranker_device = "cuda" if settings.USE_GPU and torch.cuda.is_available() else "cpu"
+            logger.info(f"🚀 Reranker 模型加载设备: {reranker_device}")
+            
             _reranker_instance = FlagReranker(
                 'BAAI/bge-reranker-v2-m3',
-                use_fp16=False,  # Windows 下禁用 FP16 避免内存问题
-                device='cpu'     # 强制使用 CPU
+                use_fp16=settings.USE_GPU,  # GPU 下启用 FP16 加速
+                device=reranker_device
             )
             logger.info("✅ 重排序模型初始化完成")
         except Exception as e:

@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     BM25_B: float = 0.75  # BM25 参数 b
     HYBRID_SEARCH_ALPHA: float = 0.7  # 混合检索向量权重
 
+    # GPU 配置
+    USE_GPU: bool = os.getenv("USE_GPU", "true").lower() == "true"
+    CUDA_DEVICE: str = os.getenv("CUDA_DEVICE", "cuda:0")
+
     class Config:
         env_file = ".env"
         case_sensitive = True

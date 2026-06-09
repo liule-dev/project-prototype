@@ -8,8 +8,8 @@ from core.config import settings
 # 创建数据库引擎
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=20,
+    max_overflow=40,
     pool_timeout=30,
     pool_recycle=3600,
     echo=settings.DEBUG
