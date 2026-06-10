@@ -231,8 +231,9 @@ def generate_study_plan_api(request):
             goals = data.get('goals')
 
             # 调用AI服务生成学习计划
-            from .ai_service import generate_study_plan
-            plan = generate_study_plan(subjects, time_frame, goals)
+            from common_ai.study_assistant import StudyAssistantService
+            assistant = StudyAssistantService()
+            plan = assistant.generate_study_plan(subjects, time_frame, goals)
 
             # 检查返回结果
             if plan and isinstance(plan, str) and len(plan) > 0:
@@ -267,7 +268,10 @@ def analyze_wrong_topics_api(request, user_id):
                     'active': wt.active
                 })
 
-            analysis = analyze_wrong_topics(topics_data)
+            # 调用AI服务分析错题
+            from common_ai.study_assistant import StudyAssistantService
+            assistant = StudyAssistantService()
+            analysis = assistant.analyze_wrong_topics(topics_data)
             return JsonResponse({
                 'status': 'success',
                 'data': {'analysis': analysis}
@@ -344,32 +348,17 @@ def chat_with_ai(request):
             # 可以在这里添加历史对话记录逻辑
             # 这里简单地将用户消息发送给AI
 
-            # 构造发送给AI的消息
-            messages = [{
-                'role': 'user',
-                'content': user_message
-            }]
-
-            # 调用通义千问API
-            response = dashscope.Generation.call(
-                model='qwen-turbo',  # 通义千问模型名称
-                messages=messages,
-                result_format='message'
-            )
-
-            if response.status_code == 200:
-                ai_reply = response.output.choices[0]['message']['content']
-                return JsonResponse({
-                    'status': 'success',
-                    'data': {
-                        'reply': ai_reply
-                    }
-                })
-            else:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'AI服务调用失败: {response.message}'
-                })
+            # 调用AI服务进行对话
+            from common_ai.study_assistant import StudyAssistantService
+            assistant = StudyAssistantService()
+            ai_reply = assistant.chat_with_ai(user_message)
+            
+            return JsonResponse({
+                'status': 'success',
+                'data': {
+                    'reply': ai_reply
+                }
+            })
 
         except Exception as e:
             return JsonResponse({

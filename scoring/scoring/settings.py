@@ -15,6 +15,10 @@ import os
 from datetime import timedelta
 
 from django.conf import settings
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,12 +28,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-j%8^184^y%$=1w!z!_@h%t1d!x56!y=15z!^_5z!_5z!_5z!_5z!_5z'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-j%8^184^y%$=1w!z!_@h%t1d!x56!y=15z!^_5z!_5z!_5z!_5z!_5z')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -51,6 +55,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'teacher_topic.apps.TeacherTopicConfig',
     "Notification.apps.NotificationConfig",
+    'common_ai',  # 统一 AI 服务模块
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -130,11 +135,11 @@ WSGI_APPLICATION = 'scoring.wsgi.application'
 DATABASES = {
     'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'questiondatabase',
-            'USER': 'root',
-            'PASSWORD': '123456',
-            'HOST': 'localhost',
-            'PORT': '3310',
+            'NAME': os.environ.get('DB_NAME', 'questiondatabase'),
+            'USER': os.environ.get('DB_USER', 'root'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', '123456'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '3310'),
         },
 }
 
@@ -208,7 +213,7 @@ QUICKAUTH_TOKEN_URL='http://api.qauth.cn/oauth/access_token'  # 需与平台实�
 QUICKAUTH_USERINFO_URL='http://api.qauth.cn/oauth/userinfo'
 
 
-TONGYI_API_KEY = 'sk-8115c1fed2d349a791f9a1572627740f'
+TONGYI_API_KEY = os.environ.get('QWEN_API_KEY', 'sk-8115c1fed2d349a791f9a1572627740f')
 
 
 

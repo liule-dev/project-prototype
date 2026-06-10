@@ -37,7 +37,7 @@ from rest_framework.decorators import action
 # OperationLogger类用于记录操作日志
 from .models import Class, User, ExamPaper, ExamRecord, ExamParticipation, AnswerDetail, Topic, TopicExam, ClassName, WrongTopic
 from .serializers import ClassSerializer, StudentSerializer, ExamSerializer, PaperSerializer, ReportSerializer, ClassNameSerializer
-from .ai_service import QwenAIService
+from common_ai.grading import GradingService
 from .utils import OperationLogger
 
 # 确保Python使用UTF-8编码
