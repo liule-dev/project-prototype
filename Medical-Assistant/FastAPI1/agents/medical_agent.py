@@ -554,42 +554,91 @@ class MedicalAgentCoordinator:
         """
         return self.query_with_context(question, context_messages=None, image_data=image_data, context=context)
 
-    def chat_stream(self, question: str):
+    def chat_stream(self, question: str, context_messages: list = None):
         """
         流式对话接口
 
         Args:
             question: 用户问题
+            context_messages: 历史对话上下文
 
         Yields:
             文本片段
         """
         try:
-            # 简单实现：先分类，然后使用对应智能体的流式输出
+            raw_context_messages = context_messages or []
+            context_messages = []
+            for msg in raw_context_messages:
+                if isinstance(msg, BaseMessage):
+                    context_messages.append(msg)
+                    continue
+                role = msg.get("role", "user") if isinstance(msg, dict) else "user"
+                content = msg.get("content", "") if isinstance(msg, dict) else str(msg)
+                if isinstance(content, list) and content:
+                    content = content[0].get("text", "") if isinstance(content[0], dict) else str(content[0])
+                if role == "assistant":
+                    context_messages.append(AIMessage(content=str(content)))
+                else:
+                    context_messages.append(HumanMessage(content=str(content)))
+
             initial_state = {
-                "messages": [HumanMessage(content=question)],
+                "messages": context_messages,
                 "question": question,
                 "specialty": "",
                 "answer": "",
                 "images": [],
-                "context": {}
+                "context": {},
+                "confidence": 0.0,
+                "retry_count": 0,
+                "is_relevant": True,
+                "is_validated": False
             }
 
-            # 先分类
+            relevance = self.validator.check_relevance(initial_state)
+            if relevance.get("is_relevant") is False:
+                yield relevance.get("answer", "抱歉，您的问题与医疗健康无关。")
+                return
+
             classifier_result = self.classifier.classify(initial_state)
             specialty = classifier_result["specialty"]
+            user_msg = HumanMessage(content=f"问题：{question}")
 
-            # 选择对应的 LLM 进行流式输出
             if specialty == 'general':
-                llm = self.general_agent.llm
+                node = self.general_agent
+                tool_result = general_medicine_tool.invoke({"query": question})
+                documents = tool_result.get("documents", [])
             elif specialty == 'imaging':
-                llm = self.imaging_agent.llm
+                node = self.imaging_agent
+                tool_result = image_search_tool.invoke({"query_text": question})
+                documents = tool_result.get("images", []) if isinstance(tool_result, dict) else []
             else:
-                llm = self.internal_agent.llm
+                node = self.internal_agent
+                tool_result = internal_medicine_tool.invoke({"query": question})
+                documents = tool_result.get("documents", [])
 
-            # 流式输出
-            for chunk in llm.stream([HumanMessage(content=question)]):
-                yield chunk.content
+            if not documents:
+                yield "⚠️ 暂未检索到相关知识库文档，无法为您提供准确建议。建议您咨询专业医生或补充相关资料后再次提问。"
+                return
+
+            if specialty == 'imaging':
+                doc_contents = [img.get("url", "") + img.get("filename", "") for img in documents]
+            else:
+                doc_contents = [doc.get("content_snippet", "") for doc in documents]
+
+            compressor = get_llmlingua_compressor()
+            compressed_docs = compressor.compress_for_retrieval(question, doc_contents, target_token=300)
+            llm_messages = [
+                HumanMessage(content=node.system_prompt),
+                *context_messages,
+                user_msg,
+                AIMessage(content=f"检索结果（已压缩）：{compressed_docs}"),
+                HumanMessage(content="请根据以上检索到的文档内容给出专业回答")
+            ]
+
+            for chunk in node.llm.stream(llm_messages):
+                content = getattr(chunk, "content", "")
+                if content:
+                    yield content
 
         except Exception as e:
             logger.error(f"流式对话失败：{e}")

@@ -1,6 +1,5 @@
 """
-WebSocket 流式问答接口（Celery 异步版本）
-支持实时推送 Celery 任务进度
+WebSocket 流式问答接口 (Celery 异步版本)
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from tasks.ai_tasks import generate_llm_response
@@ -9,10 +8,10 @@ from celery.result import AsyncResult
 from core.celery_config import celery_app
 from services.cache_service import cache_service
 from services.session_service import session_service
-from core import SessionLocal, settings
+from core import SessionLocal
 import logging
 import asyncio
-import json
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +21,10 @@ router = APIRouter(tags=["WebSocket异步"])
 @router.websocket("/query/stream/async")
 async def async_stream_query(websocket: WebSocket):
     """
-    异步流式问答接口
+    Celery 异步流式问答接口
     
-    使用 Celery 任务处理 AI 推理，实时推送进度
+    通过 Celery 任务处理 AI 推理（重排序、检索、LLM调用），
+    WebSocket 只负责接收请求和推送结果，不阻塞 FastAPI Worker。
     """
     await websocket.accept()
     
@@ -44,7 +44,7 @@ async def async_stream_query(websocket: WebSocket):
             if history:
                 cache_service.save_session_history(session_id, history)
         
-        # 规范化 content 字段为字符串（防止数据库返回的列表格式导致后续处理报错）
+        # 规范化 content 字段为字符串
         if history:
             for msg in history:
                 if isinstance(msg.get("content"), list) and len(msg["content"]) > 0:
@@ -59,7 +59,6 @@ async def async_stream_query(websocket: WebSocket):
             # 处理加载历史消息事件
             event = data.get("event")
             if event == "load_history":
-                # 返回历史消息给前端
                 if history:
                     await websocket.send_json({
                         "event": "history",
@@ -101,15 +100,21 @@ async def async_stream_query(websocket: WebSocket):
             )
             
             await websocket.send_json({"event": "start"})
-            await websocket.send_json({
-                "event": "delta",
-                "text": "🤔 正在分析您的问题..."
-            })
             
             try:
-                # 提交 Celery 任务
+                start_time = time.perf_counter()
+                
+                # 推送进度提示
+                progress_messages = [
+                    "🤔 正在分析您的问题...",
+                    "🔍 正在检索相关知识库...",
+                    "🔄 正在进行智能重排序...",
+                    "✍️ 正在生成专业回答..."
+                ]
+                
+                # 提交 Celery 任务（异步，不阻塞）
                 task = generate_llm_response.apply_async(
-                    args=[question, history[:-1]],  # 排除当前用户消息
+                    args=[question, history[:-1]],
                     queue='ai_queue',
                     priority=9
                 )
@@ -117,21 +122,13 @@ async def async_stream_query(websocket: WebSocket):
                 logger.info(f"📨 提交 Celery 任务，Task ID: {task.id}")
                 
                 # 轮询任务状态并推送进度
-                progress_messages = [
-                    "🔍 正在检索相关知识库...",
-                    "🧠 正在分析医学文献...",
-                    "✍️ 正在生成专业回答...",
-                    "✅ 正在整理最终结果..."
-                ]
-                
                 progress_idx = 0
-                max_wait_time = 360  # 最大等待 360 秒（6 分钟）
-                start_time = asyncio.get_event_loop().time()
+                max_wait_time = 300  # 最大等待 300 秒（5 分钟）
                 last_progress_time = start_time
                 
                 while not task.ready():
                     # 检查超时
-                    elapsed = asyncio.get_event_loop().time() - start_time
+                    elapsed = time.perf_counter() - start_time
                     if elapsed > max_wait_time:
                         await websocket.send_json({
                             "event": "error",
@@ -139,9 +136,9 @@ async def async_stream_query(websocket: WebSocket):
                         })
                         break
                     
-                    # 每隔 5 秒推送一次进度，防止连接假死
-                    current_time = asyncio.get_event_loop().time()
-                    if current_time - last_progress_time > 5 and progress_idx < len(progress_messages):
+                    # 每隔 3 秒推送一次进度
+                    current_time = time.perf_counter()
+                    if current_time - last_progress_time > 3 and progress_idx < len(progress_messages):
                         await websocket.send_json({
                             "event": "delta",
                             "text": progress_messages[progress_idx]
@@ -149,8 +146,8 @@ async def async_stream_query(websocket: WebSocket):
                         progress_idx += 1
                         last_progress_time = current_time
                     
-                    # 等待 1 秒后再次检查（提高响应灵敏度）
-                    await asyncio.sleep(1)
+                    # 等待 0.5 秒后再次检查
+                    await asyncio.sleep(0.5)
                 
                 # 获取任务结果
                 if task.successful():
@@ -161,19 +158,22 @@ async def async_stream_query(websocket: WebSocket):
                     confidence = result.get("confidence", 0.5)
                     specialty = result.get("specialty", "unknown")
                     
+                    first_chunk_time = time.perf_counter() - start_time
+                    logger.info(f"⏱️ Celery 任务完成，首字耗时：{first_chunk_time:.2f}秒")
+                    
                     # 如果置信度低，添加警告
                     if confidence < 0.8:
                         answer += "\n\n⚠️ 注：经系统评估，本回答可信度较低，建议咨询专业医生核实。"
                     
-                    # 逐字推送回答（模拟流式效果）
-                    chunk_size = 10
+                    # 模拟流式输出（逐段推送）
+                    chunk_size = 20
                     for i in range(0, len(answer), chunk_size):
                         chunk = answer[i:i + chunk_size]
                         await websocket.send_json({
                             "event": "delta",
                             "text": chunk
                         })
-                        await asyncio.sleep(0.05)  # 控制推送速度
+                        await asyncio.sleep(0.03)  # 控制推送速度，模拟流式效果
                     
                     # 发送结束消息
                     end_data = {"event": "end"}
@@ -226,7 +226,8 @@ async def async_stream_query(websocket: WebSocket):
                         messages=history
                     )
                     
-                    logger.info(f"✅ 异步问答完成，置信度：{confidence:.2f}")
+                    elapsed = time.perf_counter() - start_time
+                    logger.info(f"✅ 异步问答完成，总耗时：{elapsed:.2f}秒，置信度：{confidence:.2f}")
                     
                 else:
                     # 任务失败

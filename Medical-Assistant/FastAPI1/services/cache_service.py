@@ -109,13 +109,13 @@ class CacheService:
         """获取 CLIP 文本向量缓存（L1 → L2）"""
         cache_key = f"{REDIS_KEY_PREFIX['CLIP_TEXT']}:{self.calculate_md5(query_text)}"
         
-        # L1: 内存缓存（0.01ms）
+        # L1: 内存缓存
         cached = self._get_from_memory_cache(cache_key)
         if cached is not None:
             logger.debug(f"✅ CLIP 向量内存缓存命中：{query_text[:50]}")
             return cached
         
-        # L2: Redis 缓存（5ms）
+        # L2: Redis 缓存
         try:
             cached = redis_client.get(cache_key)
             if cached:
@@ -199,14 +199,14 @@ class CacheService:
         """
         cache_key = f"{REDIS_KEY_PREFIX['LLM_ANSWER']}:{self.calculate_md5(question)}"
         
-        # L1: 内存缓存（0.01ms）⭐ 关键优化
+        # L1: 内存缓存⭐ 关键优化
         cached = self._get_from_memory_cache(cache_key)
         if cached is not None:
-            logger.info(f"✅ LLM 回答内存缓存命中（极速）")
+            logger.info(f"✅ LLM 回答内存缓存命中")
             self.stats["l1_hits"] += 1
             return cached
         
-        # L2: Redis 缓存（5ms）
+        # L2: Redis 缓存
         try:
             cached = redis_client.get(cache_key)
             if cached:

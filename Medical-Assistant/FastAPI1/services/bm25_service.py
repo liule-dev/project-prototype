@@ -6,6 +6,7 @@ import jieba
 import jieba.analyse
 from rank_bm25 import BM25Okapi
 from typing import List, Dict, Optional
+import hashlib
 import logging
 import pickle
 import os
@@ -164,11 +165,11 @@ class BM25Service:
             if token.strip():
                 token_counts[token] = token_counts.get(token, 0) + 1
         
-        # 为了演示，这里用简单的哈希作为 indices（生产环境建议用专业的 Sparse Encoder）
         indices = []
         values = []
         for token, count in token_counts.items():
-            indices.append(hash(token) % 1000000) # 简单的哈希映射
+            digest = hashlib.md5(token.encode("utf-8")).hexdigest()
+            indices.append(int(digest[:12], 16) % 1000000)
             values.append(count)
             
         return {"indices": indices, "values": values}

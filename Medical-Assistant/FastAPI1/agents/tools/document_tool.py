@@ -14,6 +14,7 @@ from services.vector_service import vector_service
 from services.bm25_service import bm25_service
 from sentence_transformers import SentenceTransformer
 from core import settings
+import hashlib
 import numpy as np
 import logging
 from FlagEmbedding import FlagReranker
@@ -37,6 +38,8 @@ embed_model = SentenceTransformer(
 
 # 重排序模型延迟加载（避免启动时内存不足）
 _reranker_instance = None
+_rerank_score_cache = {}
+_RERANK_CACHE_MAX_SIZE = 256
 
 def get_reranker():
     """
@@ -131,11 +134,18 @@ def document_search_tool(query: str, top_k: int = 5, domain: str = None,
                     pairs.append([query, content])
             
             if pairs:
-                # 获取重排序模型实例（延迟加载）
-                reranker = get_reranker()
-                # 使用 Reranker 计算每对查询-文档的相关性得分，并归一化
-                scores = reranker.compute_score(pairs, normalize=True)
-                
+                cache_raw = query + "\n" + "\n".join(pair[1] for pair in pairs)
+                cache_key = hashlib.md5(cache_raw.encode("utf-8")).hexdigest()
+                scores = _rerank_score_cache.get(cache_key)
+                if scores is None:
+                    reranker = get_reranker()
+                    scores = reranker.compute_score(pairs, normalize=True)
+                    if len(_rerank_score_cache) >= _RERANK_CACHE_MAX_SIZE:
+                        _rerank_score_cache.pop(next(iter(_rerank_score_cache)))
+                    _rerank_score_cache[cache_key] = scores
+                else:
+                    logger.info("✅ 重排序缓存命中")
+
                 # 将计算得到的重排序得分赋值回对应的结果对象中
                 for i, res in enumerate(results):
                     if i < len(scores):
